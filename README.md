@@ -30,10 +30,15 @@ Data parallelism is a very natural parallelization strategy for convolutional la
 In the data parallelism model, each worker has a different batch of images, but in the model parallelism mode, each worker gets a section of the model. Thus, workers need to communicate with each other to share batches. Krizhevsky proposes three categories of parallelization strategies for this communication and computation:
 
 1. Communication happens at once, with all workers sharing all images, and then each worker continuing on to apply their part of the fully connected layer to each copy of the big batch of images.
+
     a. For memory-limited GPUs, this can pose a problem. Latency is also a factor.
+
 2. One worker shares its (information about its) batch of images. Workers apply this batch to the next layer while another worker sends their images.
+
     a. A lot of latency can be hidden via this strategy, although the ratio between communication and computation depends on the number of workers
+
 3. Workers all send a subset of their images (size of batch / number of workers), and then each worker applies their combo batch (of size equal to the normal batch size) to the next layer.
+
     a. This allows the amount of computation vs. communication to stay constant with different numbers of workers
 
 We note the above specification is for the forward pass. For the backward pass, while communication is happening each worker computes the next batch’s forward pass.
