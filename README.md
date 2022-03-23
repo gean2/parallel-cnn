@@ -82,7 +82,7 @@ We will be using C++ and CUDA as performance-oriented languages with support for
 We may do the stretch goals in the last three weeks if we have extra time.
 
 ## References
-- [One weird trick for parallelizing convolutional neural networks](https://arxiv.org/pdf/1404.5997.pdfï¼‰ã€‚) (primary resource with layer-level parallelism)
+- [One weird trick for parallelizing convolutional neural networks](https://arxiv.org/pdf/1404.5997.pdf) (primary resource)
 - [Exploring Hidden Dimensions in Parallelizing Convolutional Neural Networks](http://proceedings.mlr.press/v80/jia18a/jia18a.pdf?ref=https://codemonkey.link) (layer-wise parallelism)
 - [Evaluation of MPI_Allreduce for Distributed Training of Convolutional Neural Networks](https://ieeexplore.ieee.org/abstract/document/9407073) (MPI)
 - [Step by step VGG16 implementation in Keras for beginners](https://towardsdatascience.com/step-by-step-vgg16-implementation-in-keras-for-beginners-a833c686ae6c#:~:text=VGG16) (VGG16 model architecture)
