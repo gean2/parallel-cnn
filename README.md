@@ -57,7 +57,7 @@ We plan to implement CNNs from scratch, largely following the parallelization st
 1. CUDA implementation of CNN with VGG16 architecture (with data-parallel convolution layers and sequential fully-connected layers)
    a. We will implement four layers: maxPool, ReLu, Conv2D, and softMax
    b. We’ll be using the image classification task
-2. Add model parallelism to CUDA implementation of CNN
+2. Implement fully connected layers and add model parallelism to CUDA implementation of CNN
 3. Performance measurements on different machines with different datasets and CNN architectures
     a. Determine whether computation or memory bandwidth is the limiting factor and profile our code to find bottlenecks. 
     b. Compare our implementation with Pytorch and TensorFlow as well as performance differences between different machines.
@@ -72,11 +72,17 @@ We will be using C++ and CUDA as performance-oriented languages with support for
 
 ## Schedule
 [3/20-3/26]: Research and write proposal (due 4/23)
+
 [3/27-4/2]: Implement data-parallel conv2D and maxPool
+
 [4/3-4/9]: Implement ReLu and softMax and overall VGG16 architecture
+
 [4/10-4/16]: Implement fully connected layers with model parallelism (hopefully partially finish model parallelism by checkpoint 4/11)
+
 [4/17-4/23]: Finish up model parallelism and implement a CNN with fully-connected layers (e.g. AlexNet), and/or perform performance measurements 
+
 [4/24-4/29]: Finish up performance measurements and write final report including substantial performance analysis
+
 [5/1-5/5]: Prepare and finish final presentation
 
 We may do the stretch goals in the last three weeks if we have extra time.
