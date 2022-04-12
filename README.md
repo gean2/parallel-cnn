@@ -73,15 +73,15 @@ We will be using C++ and CUDA as performance-oriented languages with support for
 ## Schedule
 [3/20-3/26]: Research and write proposal (due 4/23)
 
-[3/27-4/2]: Implement data-parallel conv2D and maxPool
+[3/27-4/2]: Write out class structure for neural network architecture
 
-[4/3-4/9]: Implement ReLu and softMax and overall VGG16 architecture
+[4/3-4/9]: Implement inference for ReLu, SoftMax, and fully connected layers (sequentially)
 
-[4/10-4/16]: Implement fully connected layers with model parallelism (hopefully partially finish model parallelism by checkpoint 4/11)
+[4/10-4/16]: Finish up implementation of initial neural network architecture, with data parallelism 
 
-[4/17-4/23]: Finish up model parallelism and implement a CNN with fully-connected layers (e.g. AlexNet), and/or perform performance measurements 
+[4/17-4/23]: Implement model parallelism and implement a CNN with fully-connected layers (e.g. AlexNet), and/or perform performance measurements 
 
-[4/24-4/29]: Finish up performance measurements and write final report including substantial performance analysis
+[4/24-4/29]: Take performance measurements and write final report including substantial performance analysis
 
 [5/1-5/5]: Prepare and finish final presentation
 
@@ -95,3 +95,14 @@ We may do the stretch goals in the last three weeks if we have extra time.
 - [AlexNet](https://en.wikipedia.org/wiki/AlexNet) (AlexNet model architecture)
 - [ImageNet Classification with Deep Convolutional Neural Networks](https://papers.nips.cc/paper/2012/hash/c399862d3b9d6b76c8436e924a68c45b-Abstract.html)
 - [A CUDA-based implementation of convolutional neural network | IEEE Conference Publication](https://ieeexplore.ieee.org/document/8320682)
+
+# Milestone
+
+We have been working on the baseline sequential implementation of a hard-coded neural network architecture, and we are using the Thrust library to represent vectors. We have started implementing ReLu, softmax, and fully connected linear layers, and we have partially completed the inference implementation, but we have not started backward propagation.   
+
+We are unfortunately not on track as estimated by our initial project timeline. We have found that we have less time than desired due to the overlapping of the final project timeline with assignment 4 and spring carnival, and the mentor timeline plus carnival negatively affected our ability to get timely project feedback from the course staff. We have also found it more difficult than expected to code (mostly) from scratch in C++. For example, actions such as loading images and iterating through files in a directory are not supported by standard C++ libraries and require using C APIs and/or manual implementation, which is why our initial implementation runs on dummy inputs. 
+
+We are adjusting our goals to focus on parallelizing inference instead of backward propagation. We are also considering changing our goals to explore the space of measuring and comparing custom details of parallelization in Python frameworks such as PyTorch and TensorFlow. However, we need to communicate with course staff about acceptable goals and deliverables, especially with this scaled down parallelization objective. 
+
+We will post an updated detailed timeline as soon as we have we a better idea of what we should accomplish over the next two weeks.
+
