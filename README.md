@@ -98,11 +98,38 @@ We may do the stretch goals in the last three weeks if we have extra time.
 
 # Milestone
 
-We have been working on the baseline sequential implementation of a hard-coded neural network architecture, and we are using the Thrust library to represent vectors. We have started implementing ReLu, softmax, and fully connected linear layers, and we have partially completed the inference implementation, but we have not started backward propagation.   
+We have been working on the baseline sequential implementation of a hard-coded neural network architecture. Our sequential version and initial CUDA data-parallelism model will be almost identical in terms of implementation, and we had anticipated that designing a sequential version to support generic code I/O, later parallelism, and particularly backprop, would be the first big hurdle to cross. We've created a relatively flexible code framework we believe we could build on as we further work towards each step of our implementation.
 
-We are unfortunately not on track as estimated by our initial project timeline. We have found that we have less time than desired due to the overlapping of the final project timeline with assignment 4 and spring carnival, and the mentor timeline plus carnival negatively affected our ability to get timely project feedback from the course staff. We have also found it more difficult than expected to code (mostly) from scratch in C++. For example, actions such as loading images and iterating through files in a directory are not supported by standard C++ libraries and require using C APIs and/or manual implementation, which is why our initial implementation runs on dummy inputs. 
+Our module follows this basic layout:
+```c++
+main() {
+    Runner() {
+        // runs initialization & inference/training calls
+        Dataset() {
+            // iterates over batches
+        }
+        Model () {
+            // defines architecture: layer input/output sizes & activations
+            forward(); backward(); bias, weights;
+            Layer () { // subclasses for Linear, Conv2d, MaxPool
+                init(); save(); forward(); backward();
+                Activation () { // subclasses for Softmax & ReLu
 
-We are adjusting our goals to focus on parallelizing inference instead of backward propagation. We are also considering changing our goals to explore the space of measuring and comparing custom details of parallelization in Python frameworks such as PyTorch and TensorFlow. However, we need to communicate with course staff about acceptable goals and deliverables, especially with this scaled down parallelization objective. 
+                }
+            }
+        }
+    }
+}
+```
+We have starter implementations for all stages of this process, although most I/O and inference implementation is partially completed and relies on dummy variables as we further investigate the best courses of action. We have not started on backward propogation pending later updates, as seen later in this report.
 
-We will post an updated detailed timeline as soon as we have we a better idea of what we should accomplish over the next two weeks.
+We are unfortunately behind our initial timeline checkpoint goals. We have found that we have had less time than desired due to the overlapping of the final project timeline with assignment 4 and spring carnival. Additionally, the timeline of project information, mentor assignment, and carnival has made it difficult to get timely project feedback from the course staff.
+
+We have also found it more difficult than expected to code (mostly) from scratch in C++. For example, actions such as loading images and iterating through files in a directory are not supported by standard C++ libraries and require using C APIs and/or manual implementation. We have been working with the Thrust library for easier CUDA parallelism, though we are having difficulties learning the library and fully leveraging its capabilities in our limited time-span.
+
+After discussing with our project mentor the priorities of this project, we're considering shifting our efforts on improving parallelism by cutting down on domain specific SWE work. We would plan to do this by adjusting our goals to instead work with parallelizing inference instead of backward propogation, as the majority of parallelism complexity is still kept intact here. Further, we might choose to explore different approaches than model parallelism after mentor discussions and further research has shown that model parallelism is less useful when avoiding distributed systems (as we are attempting to do to keep the project in 15418's class scope). We are also considering changing our goals to explore the space of performance measurements through different parallelization strategies in Python frameworks such as PyTorch and TensorFlow. Currently, we are most concerned about identifying acceptable goals and deliverables, especially with this scaled down parallelization objective. We plan to communicate with course staff as soon as possible. 
+
+As of right now, at the poster session, we intend to show a visualization of our inference pipeline, beginning at example image loading and ending with example + real output metrics such as a confusion matrix. This visualization will explain how our neural network architecture with our parallelism strategies. We will also show graphs comparing the speedup of our parallel neural network (against our baseline sequential implementation). We also plan to provide visualizations and data comparing our hard-coded neural network's overall performance compared against machine learning frameworks such as PyTorch and TensorFlow. 
+
+We will post an updated detailed timeline as soon as we have a better idea of what we should accomplish over the next two weeks.
 
