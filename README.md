@@ -2,6 +2,10 @@
 
 15-418/618 Final Project: Concurrent Skip Lists
 
+[Final recording](https://www.youtube.com/watch?v=E-VfOaCNW-0)
+
+[Original repository](https://github.com/gean2/skiplist-private/)
+
 ## Project Proposal
 
 ### Summary
