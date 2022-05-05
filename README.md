@@ -1,135 +1,63 @@
-# parallel-cnn
-15-418/618 Final Project: Parallel convolutional neural networks
+# Skip Lists
 
-# Project Proposal
-## Summary
-We will implement convolutional neural networks (CNNs) in CUDA on the GHC and PSC GPUs, parallelizing the computation that occurs within the neural network layers. We will use data parallelism for convolutional layers and model parallelism for fully-connected layers. If we have extra time, we will use OpenMPI to increase scalability and allow us to run larger datasets across multiple processors.
+15-418/618 Final Project: Concurrent Skip Lists
 
-## Background
-The field of computer vision uses a technique called “convolutions” that allow pixels in an image to see their neighboring pixels. As an example, a vertical line detector might take the x-gradient of an image (right column - left column, a Sobel filter/convolution). Convolutional neural networks (CNNs) combine this ability with deep neural networks.
+## Project Proposal
 
-Since training CNNs requires a large amount of computation upon a large amount of data, parallelization is required to ensure that any neural network can be trained in a reasonable amount of time. Increasing training efficiency can dramatically change what complexity of tasks or datasets can be tackled.
+### Summary
 
-Table 1 shows the key properties of CNN layers that affect the selection of optimal parallelization strategies for a specific neural network layer. 
+We will implement three versions of concurrent skip lists using C/C++ and manual memory management: coarse-grained locking skip list, fine-grained locking skip list, and a lock-free skip list. 
 
-|                        | % computation | % parameters | Representation size |
-| ---------------------- | ------------- | ------------ | ------------------- |
-| Convolutional layers   | 90-95%        | 5%           | Large               |
-| Fully-connected layers | 5-10%         | 95%          | Small               |
+### Background
 
-*Table 1: Layer types with different properties (Krizhevsky 2014)*
+A skip list is a probabilistic data structure of sorted elements that on average offers O(log n) search complexity and O(log n) insertion complexity. (At worst, it offers O(n) complexity for both, but this is extremely unlikely.) A skip list consists of a hierarchy of (logically) individual linked lists, which can be considered layers. "Upper" layers are subsets of the "lower" layers at each level, and each successively "lower" layer skips over fewer and fewer elements. The lowest layer contains all the elements in sorted order, i.e. no skipped elements.
 
-![img](https://lh4.googleusercontent.com/jug5B05y0eKeuQ21qK4DeR83cxjlqWINRQwOUIYwwiuTpVcTtoWmC0E8RDoIOgVCUPYvtQbeXIDqRe6hUQbyL6gKE4Gz3qWsiuu37HlZ5syihv-rwKDZvC5uGbhqKkGS5Tgs9W8g)
+During lookup, we iterate through the "upper" layers up until we see that the next element is greater than the desired key, at which point we go down to the next "lower" layer. We repeat this process until we reach the lowest layer which contains all elements, where we then find or don't find the desired item. During insertion, we follow the same lookup process (while keeping track of previous nodes in each layer). When we find the node we will be inserting after, we pick a random height (exponentially biased), and change the links in the new node and the node previous. During deletion, we similarly look up the desired node, change the pointers in each layer to skip over the deleted node, and then free the memory associated with the node.
 
-(Krizhevsky 2014)
+Skip lists are often used in distributed applications as well as the underlying implementation for concurrent priority queues. In these applications, performance for concurrent operations is a major concern. Correctness of a thread-safe skip list can easily be ensured through a coarse-grained locking scheme, i.e. lock whenever an insertion, removal, or search is performed. Reader-writer locks can be used to slightly improve performance by allowing searches to occur simultaneously, but this lock scheme does not allow for insertions and removals to be done concurrently. In contrast, a finer-grained locking scheme can allow concurrent non-conflicting insertions, removals, and searches by locking only the two nodes whose pointers are updated by any given writing operation.
 
-### Different Types of Layers need Different Parallelism
-Data parallelism is a very natural parallelization strategy for convolutional layers because it can parallelize the significant computation over a large dimension (data), and it does not require significant synchronization due to the limited number of parameters. In contrast, the communication cost of the large number of parameters needed by a fully-connected layer outweighs the potential advantages that can be gained from data parallelism, and Krizhevsky proposes that model parallelism be leveraged instead. For model parallelism, the different workers will train different parts of the model, which requires appropriate synchronization between workers.
+A concurrent lock-free skip list allows insertions, removals, and searches to be run simultaneously through careful usage of CAS semantics to ensure correctness. This is done through pointer marking. When a node is being deleted, the first step (after finding the node to be deleted) is to "mark" its pointers to indicate that nodes should not be inserted after the node. After this operation, preceding pointers can be changed, etc. Furthermore, a reference counter must be used for each node to ensure that the memory allocated to a node is not freed while any other thread has access to it. 
 
-### How to switch between Model & Data Parallelism
-In the data parallelism model, each worker has a different batch of images, but in the model parallelism mode, each worker gets a section of the model. Thus, workers need to communicate with each other to share batches. Krizhevsky proposes three categories of parallelization strategies for this communication and computation:
+### Challenges
 
-1. Communication happens at once, with all workers sharing all images, and then each worker continuing on to apply their part of the fully connected layer to each copy of the big batch of images.
+A significant challenge is achieving a successful, correct implementation of the lock-free skip list. We need to ensure that when insertions and deletions are happening concurrently, no nodes are being added after already deleted nodes (which would cause these nodes to be inaccessible as they point to the now deleted node). Furthermore, we need to ensure that an inserted node is fully linked so that lookups of the linked list have a correct view of linked list. Of special concern is ensuring that the memory for deleted nodes is not freed while other nodes have access to them, but the memory allocated for deleted nodes is eventually freed (to prevent memory leakage). 
 
-    a. For memory-limited GPUs, this can pose a problem. Latency is also a factor.
+Similarly, for the fine-grained locking implementation, we need to ensure correctness as above, and we also need to ensure that deadlocks never occur.  This means that we need to make sure that we take all locks in the same order. Finally, we need to ensure that we drop all locks and retry whenever we are unable to grab a lock as needed. 
 
-2. One worker shares its (information about its) batch of images. Workers apply this batch to the next layer while another worker sends their images.
+### Resources
 
-    a. A lot of latency can be hidden via this strategy, although the ratio between communication and computation depends on the number of workers
+We will use the GHC machines to implement and test our skip list implementations. We will use the PSC machines to measure runtime of our benchmarking code.
 
-3. Workers all send a subset of their images (size of batch / number of workers), and then each worker applies their combo batch (of size equal to the normal batch size) to the next layer.
+We use the following papers to guide our implementations of the skip lists:
 
-    a. This allows the amount of computation vs. communication to stay constant with different numbers of workers
+1. Fraser, Keir. *Practical lock-freedom*. No. UCAM-CL-TR-579. University of Cambridge, Computer Laboratory, 2004.
+2. William Pugh. Concurrent Maintenance of Skip Lists. Technical Report CS-TR-2222, Department of Computer Science, University of Maryland, June 1990
+3. Herlihy, Maurice, et al. "A provably correct scalable concurrent skip list." *Conference On Principles of Distributed Systems (OPODIS). Citeseer*. 2006.
 
-We note the above specification is for the forward pass. For the backward pass, while communication is happening each worker computes the next batch’s forward pass.
+### Goals and Deliverables
 
-## Challenges
-Our main challenge will be implementing Krizhevsky’s proposed parallelization strategies for fully-connected layers. The three communication strategies each have separate challenges with different communication bottlenecks. We expect it will be difficult to coordinate our workers to hide latency by performing communication and computation tasks at the same time. Additionally, we expect challenges related to correctness because of how workers share data and switch between parallelization strategies.
+1. Provide implementations of a coarse-grained locking, fine-grained locking, and lock-free skip list
+2. Measured runtime and speedup across different distributions of work requested, looking at how our data structure performs with mostly insertions, mostly deletions, or mostly searches. We will be comparing the runtime across these different workloads as well as different skip list implementations and number of threads (up to 128 threads on the PSC machines).
+3. Discussion and analysis of the reasons behind speedup trends between different skip list implementations and also why speedup is not perfect, etc.
 
-Another significant challenge will be determining which parallelization strategy is best for layers that are neither fully connected nor convolutional. For example, we will need to determine whether max pooling, ReLu, and softmax layers would be better suited to data parallelism or model parallelism. We will observe the amount of computation versus the communication cost needed to synchronize parameters, and we may need to implement multiple parallelization strategies to determine the best one. We also expect that different parallelism strategies might be better based on various parameters such as the size of the convolutional kernel or specifics of different kinds of layers.
+We will most likely implement Herlihy's purportedly "simpler" fine-grained locking skip list implementation; if we have extra time, we may implement two separate fine-grained locking implementations to compare the performance of the two.
 
-## Resources
-We will use the GPUs on both the GHC and PSC machines. We will train our CNNs using some of the datasets found here: 
-- https://imerit.net/blog/top-13-machine-learning-image-classification-datasets-all-pbm/
-We plan to implement CNNs from scratch, largely following the parallelization strategies discussed in this article: [One weird trick for parallelizing convolutional neural networks](https://arxiv.org/pdf/1404.5997.pdfï¼‰ã€‚) (primary resource with layer-level parallelism). (Additional resources we may use are listed [here](#references).)
+If we encounter issues with our project, we will not implement any of the fine-grained locking skip lists, and only compare implementations of the coarse-grained locking implementation and Fraser's lock-free skip list instead.
 
-## Goals and deliverables
-1. CUDA implementation of CNN with VGG16 architecture (with data-parallel convolution layers and sequential fully-connected layers)
-   a. We will implement four layers: maxPool, ReLu, Conv2D, and softMax
-   b. We’ll be using the image classification task
-2. Implement fully connected layers and add model parallelism to CUDA implementation of CNN
-3. Performance measurements on different machines with different datasets and CNN architectures
-    a. Determine whether computation or memory bandwidth is the limiting factor and profile our code to find bottlenecks. 
-    b. Compare our implementation with Pytorch and TensorFlow as well as performance differences between different machines.
-    c. Compare our speedup values with those found in Kriezhevsky’s paper.
-4. Stretch goal: Implement CNNs with more kinds of layers (e.g. sigmoid) and dropout parameters
-5. Stretch goal: CUDA implementation with OpenMPI to run larger datasets across multiple machines
+### Platform Choice
 
-We plan to achieve goals 1, 2, and 3 (as seen above). If we encounter difficulties, we will still complete 1 and 3, but we may only partially complete 2 (e.g. not fully implementing all strategies for model parallelism). If we have extra time, we may perform additional performance measurements (for 3) with different datasets, CNN architectures, and larger convolutional kernels, determining how different architectures affect speedup and performance. Also, if we have extra time, we are interested in doing 4 and 5.
+We will largely be using C++ to implement skip lists because this provides us fine-grained synchronization control as well as control over memory allocation and freeing, which is not provided by other programming languages. C++ has an advantage over C in that it has some nice libraries (such as "random") and convenient object-oriented programming support, which simplifies test code. We will need to use C to implement the CAS operations, and we will call these functions through C++ header files.
 
-## Platform Choice
-We will be using C++ and CUDA as performance-oriented languages with support for data parallelism. We will be using the GPUs on the GHC and PSC machines because GPUs are the primary hardware acceleration used by machine learning. 
+### Timeline
 
-## Schedule
-[3/20-3/26]: Research and write proposal (due 4/23)
+4/20: Write new project proposal; finish coarse-grained locking skip list (mostly done; just needs to be made more generalizable)
 
-[3/27-4/2]: Write out class structure for neural network architecture
+4/21-4/22: Implement lock-free skip list lookup and insert (with testing code)
 
-[4/3-4/9]: Implement inference for ReLu, SoftMax, and fully connected layers (sequentially)
+4/23-4/26: Implement lock-free skip list remove (with testing code)
 
-[4/10-4/16]: Finish up implementation of initial neural network architecture, with data parallelism 
+4/27-4/29: Debug lock-free skip list if necessary; otherwise implement fine-grained locking skip list
 
-[4/17-4/23]: Implement model parallelism and implement a CNN with fully-connected layers (e.g. AlexNet), and/or perform performance measurements 
+4/30-5/3: Write benchmark code; execute benchmarking code on PSC machines
 
-[4/24-4/29]: Take performance measurements and write final report including substantial performance analysis
-
-[5/1-5/5]: Prepare and finish final presentation
-
-We may do the stretch goals in the last three weeks if we have extra time.
-
-## References
-- [One weird trick for parallelizing convolutional neural networks](https://arxiv.org/pdf/1404.5997.pdf) (primary resource)
-- [Exploring Hidden Dimensions in Parallelizing Convolutional Neural Networks](http://proceedings.mlr.press/v80/jia18a/jia18a.pdf?ref=https://codemonkey.link) (layer-wise parallelism)
-- [Evaluation of MPI_Allreduce for Distributed Training of Convolutional Neural Networks](https://ieeexplore.ieee.org/abstract/document/9407073) (MPI)
-- [Step by step VGG16 implementation in Keras for beginners](https://towardsdatascience.com/step-by-step-vgg16-implementation-in-keras-for-beginners-a833c686ae6c#:~:text=VGG16) (VGG16 model architecture)
-- [AlexNet](https://en.wikipedia.org/wiki/AlexNet) (AlexNet model architecture)
-- [ImageNet Classification with Deep Convolutional Neural Networks](https://papers.nips.cc/paper/2012/hash/c399862d3b9d6b76c8436e924a68c45b-Abstract.html)
-- [A CUDA-based implementation of convolutional neural network | IEEE Conference Publication](https://ieeexplore.ieee.org/document/8320682)
-
-# Milestone
-
-We have been working on the baseline sequential implementation of a hard-coded neural network architecture. Our sequential version and initial CUDA data-parallelism model will be almost identical in terms of implementation, and we had anticipated that designing a sequential version to support generic code I/O, later parallelism, and particularly backprop, would be the first big hurdle to cross. We've created a relatively flexible code framework we believe we could build on as we further work towards each step of our implementation.
-
-Our module follows this basic layout:
-```c++
-main() {
-    Runner() {
-        // runs initialization & inference/training calls
-        Dataset() {
-            // iterates over batches
-        }
-        Model () {
-            // defines architecture: layer input/output sizes & activations
-            forward(); backward(); bias, weights;
-            Layer () { // subclasses for Linear, Conv2d, MaxPool
-                init(); save(); forward(); backward();
-                Activation () { // subclasses for Softmax & ReLu
-
-                }
-            }
-        }
-    }
-}
-```
-We have starter implementations for all stages of this process, although most I/O and inference implementation is partially completed and relies on dummy variables as we further investigate the best courses of action. We have not started on backward propogation pending later updates, as seen later in this report.
-
-We are unfortunately behind our initial timeline checkpoint goals. We have found that we have had less time than desired due to the overlapping of the final project timeline with assignment 4 and spring carnival. Additionally, the timeline of project information, mentor assignment, and carnival has made it difficult to get timely project feedback from the course staff.
-
-We have also found it more difficult than expected to code (mostly) from scratch in C++. For example, actions such as loading images and iterating through files in a directory are not supported by standard C++ libraries and require using C APIs and/or manual implementation. We have been working with the Thrust library for easier CUDA parallelism, though we are having difficulties learning the library and fully leveraging its capabilities in our limited time-span.
-
-After discussing with our project mentor the priorities of this project, we're considering shifting our efforts on improving parallelism by cutting down on domain specific SWE work. We would plan to do this by adjusting our goals to instead work with parallelizing inference instead of backward propogation, as the majority of parallelism complexity is still kept intact here. Further, we might choose to explore different approaches than model parallelism after mentor discussions and further research has shown that model parallelism is less useful when avoiding distributed systems (as we are attempting to do to keep the project in 15418's class scope). We are also considering changing our goals to explore the space of performance measurements through different parallelization strategies in Python frameworks such as PyTorch and TensorFlow. Currently, we are most concerned about identifying acceptable goals and deliverables, especially with this scaled down parallelization objective. We plan to communicate with course staff as soon as possible. 
-
-As of right now, at the poster session, we intend to show a visualization of our inference pipeline, beginning at example image loading and ending with example + real output metrics such as a confusion matrix. This visualization will explain how our neural network architecture with our parallelism strategies. We will also show graphs comparing the speedup of our parallel neural network (against our baseline sequential implementation). We also plan to provide visualizations and data comparing our hard-coded neural network's overall performance compared against machine learning frameworks such as PyTorch and TensorFlow. 
-
-We will post an updated detailed timeline as soon as we have a better idea of what we should accomplish over the next two weeks.
-
+5/3-5/5: Write project report 
