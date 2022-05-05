@@ -61,3 +61,7 @@ We will largely be using C++ to implement skip lists because this provides us fi
 4/30-5/3: Write benchmark code; execute benchmarking code on PSC machines
 
 5/3-5/5: Write project report 
+
+### Recording
+
+You can find our presentation of our results [here](https://www.youtube.com/watch?v=E-VfOaCNW-0).
