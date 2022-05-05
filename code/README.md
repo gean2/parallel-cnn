@@ -1,4 +1,4 @@
-# SKip list implementations and benchmarking code
+# Skip list implementations and benchmarking code
 
 The skip list implementation can be found in the include/ directory. We have:
 * skiplist.h: Superclass / interface for skip list implementations
